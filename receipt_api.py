@@ -30,6 +30,11 @@ app.add_middleware(
 
 class SaveItemsRequest(BaseModel):
     items: List[ReceiptItem]
+    user_id: int | None = None
+    username: str | None = None
+    receipt_id: str | None = None
+    store_name: str | None = None
+    purchase_date: str | None = None
 
 
 @app.get("/health")
@@ -53,7 +58,14 @@ async def process_receipt(file: UploadFile = File(...)) -> dict[str, Any]:
 @app.post("/save_items")
 async def save_items(payload: SaveItemsRequest) -> dict[str, Any]:
     try:
-        success, message = save_data_to_db(payload.items)
+        success, message = save_data_to_db(
+            payload.items,
+            user_id=payload.user_id,
+            username=payload.username,
+            receipt_id=payload.receipt_id,
+            store_name=payload.store_name,
+            purchase_date=payload.purchase_date,
+        )
         if not success:
             raise HTTPException(status_code=400, detail=message)
         return {"message": message}
