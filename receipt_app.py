@@ -12,8 +12,8 @@ from langchain_community.llms import Ollama
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain.output_parsers import PydanticOutputParser
-from langchain.sql_database import SQLDatabase
-from langchain.agents import create_sql_agent
+from langchain_community.utilities import SQLDatabase
+from langchain_community.agent_toolkits.sql.base import create_sql_agent
 from langchain.agents.agent_types import AgentType
 
 # Pydantic models
@@ -75,7 +75,7 @@ if 'ocr_text' not in st.session_state:
 if 'extracted_data' not in st.session_state:
     st.session_state.extracted_data = None
 if 'db_uri' not in st.session_state:
-    st.session_state.db_uri = "postgresql://shikhar:shikhar@localhost/receipt_db"
+    st.session_state.db_uri = os.getenv('DATABASE_URL', "postgresql://shikhar:shikhar@localhost/receipt_db")
 if 'show_manual_entry' not in st.session_state:
     st.session_state.show_manual_entry = False
 
@@ -153,7 +153,9 @@ def save_data_to_db(structured_data: List[ReceiptItem], db_uri: str):
 def setup_langchain():
     """Setup LangChain components"""
     try:
-        llm = Ollama(model="llama3")
+        # Use containerized Ollama service
+        ollama_base_url = os.getenv('OLLAMA_BASE_URL', 'http://host.docker.internal:11434/api/generate')
+        llm = Ollama(model="llama3.2:1b", base_url=ollama_base_url)
         
         # Parser
         parser = PydanticOutputParser(pydantic_object=ReceiptData)
@@ -203,51 +205,69 @@ Provide a clear, helpful recommendation based on the data. Focus on value, quali
         st.error(f"Error setting up LangChain: {str(e)}")
         return None, None, None, None
 
-# Query handler
+
+# Query handler (Revised)
 def user_query_handler(user_query: str, db_uri: str, llm, reasoning_chain):
     """Handle user queries using SQL agent or reasoning chain"""
     try:
-        db = SQLDatabase.from_uri(db_uri)
-        sql_agent = create_sql_agent(
-            llm=llm,
-            db=db,
-            agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-            verbose=False,
-            handle_parsing_errors=True
-        )
-        
-        # Try to determine if query is factual or subjective with better prompting
+        # Step 1: Determine if the query is factual or subjective
+        # Use a more explicit prompt for better classification
+        is_factual = "Factual"  # Default to Factual
         try:
-            factual_check = llm.invoke(f"""Analyze this query and respond with ONLY 'Factual' or 'Subjective':
+            llm_response = llm.invoke(f"""Analyze this query and respond with ONLY ONE of the following: 'Factual' or 'Subjective'.
+            
             Query: {user_query}
             
-            Factual queries ask for specific data (e.g., "which item was sold most", "total revenue")
-            Subjective queries ask for opinions/recommendations (e.g., "best deals", "what should I buy")
+            'Factual' for queries about specific data (e.g., "what's the total revenue").
+            'Subjective' for queries that ask for opinions or advice (e.g., "is it a good idea to buy Bata?").
             
             Response:""")
             
-            # Clean the response to extract just the key word
-            is_factual = "Factual" if "Factual" in factual_check.strip() else "Subjective"
-            
+            llm_response_clean = llm_response.strip().lower()
+
+            if "subjective" in llm_response_clean:
+                is_factual = "Subjective"
         except Exception as e:
-            # Fallback: assume factual for most queries
-            is_factual = "Factual"
-        
-        if "Factual" in is_factual:
+            # If the LLM call fails, assume it's a subjective question
+            is_factual = "Subjective"
+
+        # Step 2: Route the query based on the classification
+        if is_factual == "Factual":
+            # Handle Factual Queries using SQL agent
+            db = SQLDatabase.from_uri(db_uri)
+            sql_agent = create_sql_agent(
+                llm=llm,
+                db=db,
+                agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+                verbose=False,
+                handle_parsing_errors=True
+            )
             try:
                 response = sql_agent.run(user_query)
                 return f"**Factual Query Response:**\n{response}"
             except Exception as e:
                 return f"**SQL Query Error:**\n{str(e)}\n\nTry rephrasing your question to be more specific about the data you want."
         else:
+            # Handle Subjective Queries using reasoning_chain
             try:
-                # Get all items data first
-                all_items_data_result = sql_agent.run("SELECT item_name, quantity, price FROM receipt_items")
-                recommendation = reasoning_chain.run(purchase_data=all_items_data_result, user_query=user_query)
+                # Manually get all items data without the agent
+                engine = create_engine(db_uri)
+                Session = sessionmaker(bind=engine)
+                session = Session()
+                all_items = session.query(ReceiptItemDB).all()
+                session.close()
+
+                # Format the data for the LLM
+                purchase_data_string = "\n".join([
+                    f"Item Name: {item.item_name}, Quantity: {item.quantity}, Price: {item.price}" for item in all_items
+                ])
+
+                # Run the reasoning chain directly
+                recommendation = reasoning_chain.run(purchase_data=purchase_data_string, user_query=user_query)
                 return f"**Recommendation:**\n{recommendation}"
             except Exception as e:
                 return f"**Reasoning Error:**\n{str(e)}\n\nTry asking a factual question instead."
-            
+    
     except Exception as e:
         return f"Error processing query: {str(e)}"
 
@@ -479,3 +499,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
