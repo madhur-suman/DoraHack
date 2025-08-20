@@ -3,7 +3,7 @@ import json
 import requests
 from PIL import Image
 import io
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 # LangChain imports
 from langchain_community.llms import Ollama
@@ -15,7 +15,7 @@ from langchain.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
 
 # Database imports
-from sqlalchemy import create_engine, Column, Integer, String, Float
+from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, Boolean, DateTime, Date, func
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -30,12 +30,40 @@ class ReceiptData(BaseModel):
 
 # Database models
 Base = declarative_base()
+
+class UserDB(Base):
+    __tablename__ = 'users'
+    id = Column(Integer, primary_key=True)
+    username = Column(String, unique=True, nullable=False)
+    email = Column(String, unique=True)
+    full_name = Column(String)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
 class ReceiptItemDB(Base):
     __tablename__ = 'receipt_items'
     id = Column(Integer, primary_key=True)
-    item_name = Column(String)
-    quantity = Column(Integer)
-    price = Column(Float)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    receipt_id = Column(String)  # Optional receipt identifier
+    item_name = Column(String, nullable=False)
+    quantity = Column(Integer, nullable=False)
+    price = Column(Float, nullable=False)
+    total_amount = Column(Float)  # Computed column: quantity * price
+    category = Column(String)  # Optional item category
+    store_name = Column(String)  # Optional store information
+    purchase_date = Column(Date)  # Optional purchase date
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+def get_or_create_user(session, username: str) -> int:
+    user = session.query(UserDB).filter(UserDB.username == username).one_or_none()
+    if user is None:
+        user = UserDB(username=username)
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+    return user.id
 
 def ocr_space_api(image_bytes: bytes, filename: str = "image.jpg", api_key: str = "K82415501488957", lang: str = "eng") -> str:
     """Perform OCR on image bytes using OCR.space API"""
@@ -137,28 +165,57 @@ def process_receipt_image(image_bytes: bytes, filename: str) -> Tuple[str, Recei
     
     return ocr_text, structured_data
 
-def save_data_to_db(items: List[ReceiptItem], db_uri: str = None) -> Tuple[bool, str]:
-    """Save extracted data to database"""
+def save_data_to_db(items: List[ReceiptItem], db_uri: Optional[str] = None, user_id: Optional[int] = None, username: Optional[str] = None, receipt_id: Optional[str] = None, store_name: Optional[str] = None, purchase_date: Optional[str] = None) -> Tuple[bool, str]:
+    """Save extracted data to database scoping rows to a specific user.
+
+    Either provide user_id directly, or provide a username to be resolved/created.
+    Additional metadata can be provided for enhanced tracking.
+    """
     if db_uri is None:
         db_uri = os.getenv('DATABASE_URL', 'postgresql://shikhar:shikhar@localhost/receipt_db')
-    
+
     try:
         engine = create_engine(db_uri)
         Base.metadata.create_all(engine)
-        
+
         Session = sessionmaker(bind=engine)
         session = Session()
-        
+
+        # Resolve user
+        if user_id is None:
+            if not username:
+                session.close()
+                return False, "user_id or username must be provided to save items"
+            user_id = get_or_create_user(session, username)
+
+        # Convert purchase_date string to Date object if provided
+        purchase_date_obj = None
+        if purchase_date:
+            try:
+                from datetime import datetime
+                purchase_date_obj = datetime.strptime(purchase_date, '%Y-%m-%d').date()
+            except ValueError:
+                # If date parsing fails, continue without it
+                pass
+
         for item in items:
+            # Calculate total amount
+            total_amount = item.quantity * item.price
+            
             new_item = ReceiptItemDB(
+                user_id=user_id,
+                receipt_id=receipt_id,
                 item_name=item.item_name,
                 quantity=item.quantity,
-                price=item.price
+                price=item.price,
+                total_amount=total_amount,
+                store_name=store_name,
+                purchase_date=purchase_date_obj
             )
             session.add(new_item)
-        
+
         session.commit()
         session.close()
-        return True, f"Successfully stored {len(items)} items in the database!"
+        return True, f"Successfully stored {len(items)} items for user_id={user_id}!"
     except Exception as e:
         return False, f"Error storing data: {str(e)}"

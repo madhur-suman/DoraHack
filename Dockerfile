@@ -13,9 +13,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Ollama
-RUN curl -fsSL https://ollama.ai/install.sh | sh
-
 # Create app dir
 WORKDIR /app
 
@@ -23,9 +20,10 @@ WORKDIR /app
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# Copy source code
+# Copy source code and SQL scripts
 COPY *.py /app/
 COPY *.md /app/
+COPY *.sql /app/
 
 # Create necessary directories
 RUN mkdir -p /app/uploads
