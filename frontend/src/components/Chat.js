@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Form, Button, Card, Alert } from 'react-bootstrap';
-import axios from 'axios';
+import api from '../utils/api';
 
 function Chat() {
   const [query, setQuery] = useState('');
@@ -20,7 +20,7 @@ function Chat() {
     setResponse('');
 
     try {
-      const result = await axios.post('/api/chat/query/', {
+      const result = await api.post('/api/chat/query/', {
         query: query.trim()
       });
       
