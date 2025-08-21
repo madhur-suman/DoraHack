@@ -33,7 +33,14 @@ export function AuthProvider({ children }) {
         username,
         password
       });
-      setUser(response.data);
+      const { access, refresh, ...user } = response.data;
+      if (access) {
+        localStorage.setItem('accessToken', access);
+      }
+      if (refresh) {
+        localStorage.setItem('refreshToken', refresh);
+      }
+      setUser(user);
       return { success: true };
     } catch (error) {
       return { 
@@ -62,6 +69,8 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       setUser(null);
     }
   };

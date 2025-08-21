@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from django.contrib.auth import authenticate, login, logout
+from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User
 from .serializers import UserSerializer, UserCreateSerializer
 
@@ -31,16 +32,20 @@ class UserViewSet(viewsets.ModelViewSet):
         if username and password:
             user = authenticate(username=username, password=password)
             if user:
-                login(request, user)
-                return Response(UserSerializer(user).data)
+                refresh = RefreshToken.for_user(user)
+                data = UserSerializer(user).data
+                data.update({
+                    'access': str(refresh.access_token),
+                    'refresh': str(refresh)
+                })
+                return Response(data)
             else:
                 return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
         return Response({'error': 'Username and password required'}, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=False, methods=['post'])
     def logout(self, request):
-        logout(request)
-        return Response({'message': 'Logged out successfully'})
+        return Response({'message': 'Logged out (client should discard JWT)'})
     
     @action(detail=False, methods=['get'])
     def me(self, request):

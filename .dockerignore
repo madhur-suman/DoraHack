@@ -1,0 +1,21 @@
+# VCS
+.git
+.gitignore
+
+# Python
+**/__pycache__/**
+**/*.pyc
+.venv
+
+# Node / Frontend
+node_modules
+frontend/node_modules
+frontend/build
+
+# Local artifacts
+uploads
+media
+staticfiles
+*.sqlite3
+.DS_Store
+__MACOSX
