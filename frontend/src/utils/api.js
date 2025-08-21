@@ -1,43 +1,49 @@
 import axios from 'axios';
 
-// Create axios instance with default configuration
 const api = axios.create({
-  baseURL: '',
-  withCredentials: false,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: 'http://localhost:8000', // adjust to your backend
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Add request interceptor to include CSRF token if needed
+// Attach access token
 api.interceptors.request.use(
   (config) => {
-    // Get CSRF token from cookie if it exists
-    const csrfToken = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('csrftoken='))
-      ?.split('=')[1];
-    
-    // Attach JWT access token if available
-    const access = localStorage.getItem('accessToken');
-    if (access) {
-      config.headers['Authorization'] = `Bearer ${access}`;
-    }
-    
+    const token = localStorage.getItem('accessToken');
+    if (token) config.headers['Authorization'] = `Bearer ${token}`;
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Add response interceptor for error handling
+// Refresh on 401
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  (error) => {
-    // Optional: handle 401 for token refresh logic
+  (res) => res,
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      try {
+        const refresh = localStorage.getItem('refreshToken');
+        if (!refresh) throw new Error('No refresh token');
+
+        // Adjust if your backend uses /api/token/refresh/
+        const res = await axios.post('http://localhost:8000/api/token/refresh/', { refresh });
+
+        const { access } = res.data;
+        localStorage.setItem('accessToken', access);
+
+        api.defaults.headers.common['Authorization'] = `Bearer ${access}`;
+        originalRequest.headers['Authorization'] = `Bearer ${access}`;
+
+        return api(originalRequest);
+      } catch (err) {
+        console.error('Refresh failed', err);
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+      }
+    }
+
     return Promise.reject(error);
   }
 );

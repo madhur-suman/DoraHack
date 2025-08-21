@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Form, Button, Card, Alert, Table } from 'react-bootstrap';
-import axios from 'axios';
+import api from '../utils/api';
 
 function ReceiptUpload() {
   const [file, setFile] = useState(null);
@@ -31,7 +31,7 @@ function ReceiptUpload() {
     formData.append('image', file);
 
     try {
-      const response = await axios.post('/api/ocr/process/', formData, {
+      const response = await api.post('/api/ocr/process/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -60,7 +60,7 @@ function ReceiptUpload() {
       const receiptData = ocrResult.structured_data;
 
       for (const item of items) {
-        await axios.post('/api/receipts/', {
+        await api.post('/api/receipts/', {
           receipt_id: receiptData.store_name + '_' + Date.now(),
           item_name: item.item_name,
           quantity: item.quantity,

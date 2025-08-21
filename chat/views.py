@@ -5,6 +5,7 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.response import Response
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.authentication import SessionAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
 from langchain.llms import Ollama
 from langchain.prompts import PromptTemplate
@@ -20,9 +21,8 @@ class CsrfExemptSessionAuthentication(SessionAuthentication):
 
 # Exempt CSRF for this endpoint to allow proxied session-auth calls from the frontend dev server
 @api_view(['POST'])
-@authentication_classes([CsrfExemptSessionAuthentication])
+@authentication_classes([JWTAuthentication, CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
-@csrf_exempt
 def chat_query(request):
     """Handle natural language queries about receipt data"""
     query = request.data.get('query', '').strip()

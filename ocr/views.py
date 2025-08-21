@@ -32,16 +32,19 @@ def process_receipt(request):
     """Process a receipt image and extract structured data"""
     if 'image' not in request.FILES:
         return Response({'error': 'No image provided'}, status=status.HTTP_400_BAD_REQUEST)
-    
+
     image_file = request.FILES['image']
-    
+
+    # Read bytes once to avoid empty stream issues downstream
+    image_bytes = image_file.read()
+
     # Save image to media directory
     file_name = f"receipts/{uuid.uuid4()}_{image_file.name}"
-    path = default_storage.save(file_name, ContentFile(image_file.read()))
-    
+    path = default_storage.save(file_name, ContentFile(image_bytes))
+
     try:
         # Extract text using OCR.space API
-        ocr_text = extract_text_from_image(image_file)
+        ocr_text = extract_text_from_image(image_bytes, image_file.name, getattr(image_file, 'content_type', 'application/octet-stream'))
         
         if not ocr_text:
             return Response({'error': 'Could not extract text from image'}, status=status.HTTP_400_BAD_REQUEST)
@@ -58,20 +61,20 @@ def process_receipt(request):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-def extract_text_from_image(image_file):
+def extract_text_from_image(image_bytes, filename: str, content_type: str = 'application/octet-stream'):
     """Extract text from image using OCR.space API"""
     api_key = os.environ.get('OCR_API_KEY', 'K81724188988957')
     url = 'https://api.ocr.space/parse/image'
-    
-    files = {'image': image_file}
+
+    # OCR.space expects the file field to be named 'file'
+    files = {'file': (filename, image_bytes, content_type)}
     data = {
         'apikey': api_key,
         'language': 'eng',
         'isOverlayRequired': False,
-        'filetype': 'png',
         'detectOrientation': True,
     }
-    
+
     response = requests.post(url, files=files, data=data)
     result = response.json()
     
