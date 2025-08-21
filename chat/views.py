@@ -1,8 +1,11 @@
 import os
 from django.conf import settings
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.authentication import SessionAuthentication
+from rest_framework.permissions import IsAuthenticated
 from langchain.llms import Ollama
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
@@ -10,7 +13,16 @@ from receipts.models import ReceiptItem
 from django.db.models import Sum, Count, Avg
 from datetime import datetime, timedelta
 
+# Custom auth that skips CSRF enforcement but uses the session cookie
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    def enforce_csrf(self, request):
+        return
+
+# Exempt CSRF for this endpoint to allow proxied session-auth calls from the frontend dev server
 @api_view(['POST'])
+@authentication_classes([CsrfExemptSessionAuthentication])
+@permission_classes([IsAuthenticated])
+@csrf_exempt
 def chat_query(request):
     """Handle natural language queries about receipt data"""
     query = request.data.get('query', '').strip()
@@ -98,7 +110,7 @@ def create_data_context(user_items):
 def generate_chat_response(query, context):
     """Generate response using LangChain and Ollama"""
     try:
-        llm = Ollama(base_url=settings.OLLAMA_BASE_URL, model="llama2")
+        llm = Ollama(base_url=settings.OLLAMA_BASE_URL, model="llama3.2:1b")
         
         prompt = PromptTemplate(
             input_variables=["query", "context"],

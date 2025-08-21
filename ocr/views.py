@@ -120,3 +120,4 @@ def extract_structured_data(ocr_text):
 
 
 
+
