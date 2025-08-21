@@ -1,0 +1,13 @@
+Django==4.2.7
+djangorestframework==3.14.0
+django-cors-headers==4.3.1
+psycopg2-binary==2.9.7
+python-dotenv==1.0.0
+requests==2.31.0
+Pillow==10.0.1
+langchain==0.0.335
+langchain-community==0.0.1
+python-multipart==0.0.6
+pydantic==2.4.2
+sqlalchemy==2.0.21
+

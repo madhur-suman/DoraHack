@@ -3,50 +3,66 @@ version: '3.8'
 services:
   postgres:
     image: postgres:15
-    container_name: receipt-postgres
     environment:
       POSTGRES_DB: receipt_db
       POSTGRES_USER: shikhar
-      POSTGRES_PASSWORD: shikhar
-      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_PASSWORD: shikhar123
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql
       - ./migrate_to_multi_user.sql:/docker-entrypoint-initdb.d/02-migration.sql
       - ./user_management.sql:/docker-entrypoint-initdb.d/03-user-management.sql
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U shikhar -d receipt_db"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
 
   ollama:
     image: ollama/ollama:latest
-    container_name: receipt-ollama
     ports:
       - "11435:11434"
     volumes:
       - ollama_data:/root/.ollama
-    environment:
-      - OLLAMA_HOST=0.0.0.0
     restart: unless-stopped
 
-  streamlit-app:
+  django-api:
     build: .
-    container_name: receipt-streamlit
     ports:
-      - "8501:8501"
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://shikhar:shikhar123@postgres:5432/receipt_db
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - DEBUG=True
+      - SECRET_KEY=your-secret-key-here
+    volumes:
+      - ./uploads:/app/uploads
+      - ./media:/app/media
     depends_on:
       postgres:
         condition: service_healthy
-    environment:
-      - DATABASE_URL=postgresql://shikhar:shikhar@postgres:5432/receipt_db
-      - OLLAMA_BASE_URL=http://ollama:11434
-      - APP_USERNAME=alice
+      ollama:
+        condition: service_started
+    restart: unless-stopped
+
+  frontend:
+    image: node:18-alpine
+    working_dir: /app
+    ports:
+      - "3000:3000"
     volumes:
-      - ./uploads:/app/uploads
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - HOST=0.0.0.0
+      - WDS_SOCKET_HOST=0.0.0.0
+      - WDS_SOCKET_PORT=3000
+      - REACT_APP_API_URL=http://django-api:8000
+    command: sh -c "npm install && npm start"
+    depends_on:
+      - django-api
     restart: unless-stopped
 
 volumes:
