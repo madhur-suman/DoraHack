@@ -111,7 +111,7 @@ AUTH_USER_MODEL = 'users.User'
 # REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -134,10 +134,7 @@ SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost",
-    "http://localhost:3000",
-    "http://127.0.0.1",
-    "http://127.0.0.1:3000",
+    "http://localhost:3000"
 ]
 
 # Environment variables

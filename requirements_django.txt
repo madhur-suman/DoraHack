@@ -11,3 +11,6 @@ python-multipart==0.0.6
 pydantic==2.4.2
 sqlalchemy==2.0.21
 
+# JWT auth
+djangorestframework-simplejwt==5.3.1
+

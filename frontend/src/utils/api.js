@@ -3,7 +3,7 @@ import axios from 'axios';
 // Create axios instance with default configuration
 const api = axios.create({
   baseURL: '',
-  withCredentials: true, // This is important for sending cookies with requests
+  withCredentials: false,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -18,8 +18,10 @@ api.interceptors.request.use(
       .find(row => row.startsWith('csrftoken='))
       ?.split('=')[1];
     
-    if (csrfToken) {
-      config.headers['X-CSRFToken'] = csrfToken;
+    // Attach JWT access token if available
+    const access = localStorage.getItem('accessToken');
+    if (access) {
+      config.headers['Authorization'] = `Bearer ${access}`;
     }
     
     return config;
@@ -35,10 +37,7 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response?.status === 403) {
-      // Handle authentication errors
-      console.error('Authentication error:', error.response.data);
-    }
+    // Optional: handle 401 for token refresh logic
     return Promise.reject(error);
   }
 );
