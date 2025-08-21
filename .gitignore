@@ -55,6 +55,7 @@ temp/
 processed_receipts/
 output_data/
 extracted_data/
+frontend/node_modules
 
 # Large image files (uncomment if you want to ignore large images)
 # *.jpg
@@ -73,3 +74,20 @@ extracted_data/
 *.sqlite
 *.sqlite3
 *.db
+
+# Frontend/Node.js
+frontend/node_modules/
+frontend/.npm
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/build/
+frontend/dist/
+frontend/.next/
+frontend/.nuxt/
+frontend/.cache/
+frontend/.parcel-cache/
