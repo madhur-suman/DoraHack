@@ -12,7 +12,6 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in on app start
     checkAuth();
   }, []);
 
@@ -21,7 +20,8 @@ export function AuthProvider({ children }) {
       const response = await api.get('/api/users/me/');
       setUser(response.data);
     } catch (error) {
-      setUser(null);
+      console.warn('checkAuth failed, probably expired token');
+      setUser(null); // don't force logout here, refresh may handle it
     } finally {
       setLoading(false);
     }
@@ -29,23 +29,19 @@ export function AuthProvider({ children }) {
 
   const login = async (username, password) => {
     try {
-      const response = await api.post('/api/users/login/', {
-        username,
-        password
-      });
-      const { access, refresh, ...user } = response.data;
-      if (access) {
-        localStorage.setItem('accessToken', access);
-      }
-      if (refresh) {
-        localStorage.setItem('refreshToken', refresh);
-      }
-      setUser(user);
+      const response = await api.post('/api/users/login/', { username, password });
+      const { access, refresh, ...userData } = response.data;
+
+      if (access) localStorage.setItem('accessToken', access);
+      if (refresh) localStorage.setItem('refreshToken', refresh);
+
+      api.defaults.headers.common['Authorization'] = `Bearer ${access}`;
+      setUser(userData);
       return { success: true };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.error || 'Login failed' 
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Login failed',
       };
     }
   };
@@ -56,9 +52,9 @@ export function AuthProvider({ children }) {
       setUser(response.data);
       return { success: true };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data || 'Registration failed' 
+      return {
+        success: false,
+        error: error.response?.data || 'Registration failed',
       };
     }
   };
@@ -71,6 +67,7 @@ export function AuthProvider({ children }) {
     } finally {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
+      delete api.defaults.headers.common['Authorization'];
       setUser(null);
     }
   };
@@ -80,7 +77,7 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
-    loading
+    loading,
   };
 
   return (
@@ -89,6 +86,3 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
-
-
-

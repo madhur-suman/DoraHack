@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Card, Badge, Form, InputGroup } from 'react-bootstrap';
-import axios from 'axios';
+import api from '../utils/api';
 
 function ReceiptList() {
   const [receipts, setReceipts] = useState([]);
@@ -13,7 +13,7 @@ function ReceiptList() {
 
   const fetchReceipts = async () => {
     try {
-      const response = await axios.get('/api/receipts/');
+      const response = await api.get('/api/receipts/');
       setReceipts(response.data.results || response.data);
     } catch (error) {
       console.error('Error fetching receipts:', error);

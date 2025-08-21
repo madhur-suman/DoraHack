@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Form, Button, Card, Alert } from 'react-bootstrap';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
+import api from '../utils/api';  // 🔹 make sure axios instance is imported
 
 function Login() {
   const [username, setUsername] = useState('');
@@ -17,13 +18,19 @@ function Login() {
     setLoading(true);
 
     const result = await login(username, password);
-    
+
     if (result.success) {
+      // 🔹 Set Authorization header immediately after login
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      }
+
       navigate('/');
     } else {
       setError(result.error);
     }
-    
+
     setLoading(false);
   };
 
@@ -66,7 +73,3 @@ function Login() {
 }
 
 export default Login;
-
-
-
-
