@@ -59,7 +59,7 @@ services:
       - WDS_SOCKET_HOST=0.0.0.0
       - WDS_SOCKET_PORT=3000
       - REACT_APP_API_URL=http://django-api:8000
-    command: sh -c "npm install && npm start"
+    command: sh -c "npm install && CHOKIDAR_USEPOLLING=true npm start"
     depends_on:
       - django-api
     restart: unless-stopped

@@ -1,17 +1,181 @@
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ShopSense Design System - Glassmorphism & Pastels
+All colors MUST be HSL for proper theming.
+*/
+
+@layer base {
+  :root {
+    /* ShopSense Glassmorphism Color System */
+    --background: 270 30% 96%;
+    --foreground: 260 15% 25%;
+
+    /* Glass panels with subtle tints */
+    --glass: 270 20% 98%;
+    --glass-border: 260 25% 85%;
+    
+    /* Primary purple-blue brand colors */
+    --primary: 260 60% 55%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 270 80% 75%;
+    
+    /* Soft pastel accents */
+    --secondary: 280 40% 88%;
+    --secondary-foreground: 260 20% 30%;
+    
+    --accent: 200 50% 85%;
+    --accent-foreground: 220 30% 25%;
+    
+    /* Muted glass elements */
+    --muted: 270 15% 92%;
+    --muted-foreground: 260 12% 45%;
+    
+    /* Interactive states */
+    --border: 270 20% 88%;
+    --input: 270 25% 94%;
+    --ring: 260 60% 55%;
+    
+    /* Status colors */
+    --success: 140 50% 60%;
+    --warning: 45 90% 65%;
+    --destructive: 0 75% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Card variants */
+    --card: 270 25% 97%;
+    --card-foreground: 260 15% 25%;
+    --card-border: 270 20% 90%;
+
+    /* Popover */
+    --popover: 270 30% 98%;
+    --popover-foreground: 260 15% 25%;
+
+    /* Design system tokens */
+    --radius: 1rem;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(280 60% 75% / 0.3), hsl(200 70% 80% / 0.2));
+    --gradient-glass: linear-gradient(135deg, hsl(270 30% 98% / 0.7), hsl(260 25% 95% / 0.5));
+    --gradient-card: linear-gradient(135deg, hsl(270 25% 97% / 0.8), hsl(280 20% 96% / 0.6));
+    
+    /* Shadows for glassmorphism */
+    --shadow-glass: 0 8px 32px hsl(260 30% 20% / 0.1);
+    --shadow-glow: 0 0 40px hsl(260 60% 70% / 0.2);
+    
+    /* Animation timing */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  .dark {
+    --background: 260 25% 8%;
+    --foreground: 270 15% 85%;
+
+    --glass: 260 20% 12%;
+    --glass-border: 270 25% 20%;
+    
+    --primary: 260 60% 65%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 270 80% 75%;
+    
+    --secondary: 270 30% 15%;
+    --secondary-foreground: 270 15% 75%;
+    
+    --accent: 200 40% 20%;
+    --accent-foreground: 200 30% 75%;
+    
+    --muted: 260 20% 15%;
+    --muted-foreground: 270 12% 55%;
+    
+    --border: 260 25% 18%;
+    --input: 260 25% 14%;
+    --ring: 260 60% 65%;
+    
+    --success: 140 50% 50%;
+    --warning: 45 80% 55%;
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --card: 260 25% 10%;
+    --card-foreground: 270 15% 85%;
+    --card-border: 260 25% 18%;
+
+    --popover: 260 25% 10%;
+    --popover-foreground: 270 15% 85%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(280 60% 35% / 0.4), hsl(200 50% 40% / 0.3));
+    --gradient-glass: linear-gradient(135deg, hsl(260 25% 12% / 0.8), hsl(270 20% 10% / 0.6));
+    --gradient-card: linear-gradient(135deg, hsl(260 25% 10% / 0.9), hsl(280 20% 8% / 0.7));
+    
+    --shadow-glass: 0 8px 32px hsl(260 30% 5% / 0.3);
+    --shadow-glow: 0 0 40px hsl(260 60% 40% / 0.15);
+  }
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-inter;
+    background: var(--gradient-primary);
+    min-height: 100vh;
+  }
 }
 
+@layer components {
+  /* Glassmorphism utilities */
+  .glass-panel {
+    @apply backdrop-blur-lg border border-glass-border rounded-2xl;
+    background: var(--gradient-glass);
+    box-shadow: var(--shadow-glass);
+  }
+  
+  .glass-card {
+    @apply backdrop-blur-md border border-card-border rounded-xl;
+    background: var(--gradient-card);
+    box-shadow: var(--shadow-glass);
+  }
+  
+  .glass-hover {
+    @apply transition-all duration-300 hover:backdrop-blur-xl hover:shadow-glow;
+    transition: var(--transition-smooth);
+  }
+  
+  .glass-hover:hover {
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-2px);
+  }
 
+  /* Animation classes */
+  .animate-fade-up {
+    @apply animate-[fadeUp_0.6s_ease-out_forwards];
+  }
+  
+  .animate-bounce-in {
+    @apply animate-[bounceIn_0.5s_ease-out_forwards];
+  }
+}
 
-
+@layer utilities {
+  /* Custom gradient backgrounds */
+  .bg-gradient-primary {
+    background: var(--gradient-primary);
+  }
+  
+  .bg-gradient-glass {
+    background: var(--gradient-glass);
+  }
+  
+  .bg-gradient-card {
+    background: var(--gradient-card);
+  }
+  
+  /* Text gradients */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary via-primary-glow to-accent bg-clip-text text-transparent;
+  }
+}
