@@ -1,5 +1,5 @@
 # Frontend Dockerfile for Vite
-FROM node:18-alpine
+FROM node:20.18.0
 
 # Set working directory
 WORKDIR /app

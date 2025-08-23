@@ -51,3 +51,69 @@ class UserViewSet(viewsets.ModelViewSet):
     def me(self, request):
         return Response(UserSerializer(request.user).data)
 
+    # Civic Auth endpoints
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def civic_sync(self, request):
+        """Sync Civic Auth user with backend"""
+        try:
+            civic_data = request.data
+            civic_user_id = civic_data.get('id')
+            email = civic_data.get('email')
+            name = civic_data.get('name')
+            auth_method = civic_data.get('authMethod', 'civic')
+            wallet_address = civic_data.get('walletAddress')
+            
+            # Check if user exists by Civic ID or email
+            user = None
+            if civic_user_id:
+                user = User.objects.filter(civic_user_id=civic_user_id).first()
+            
+            if not user and email:
+                user = User.objects.filter(email=email).first()
+            
+            if not user:
+                # Create new user
+                username = f"civic_{civic_user_id}" if civic_user_id else f"civic_{email}"
+                user = User.objects.create(
+                    username=username,
+                    email=email,
+                    first_name=name.split()[0] if name else '',
+                    last_name=' '.join(name.split()[1:]) if name and len(name.split()) > 1 else '',
+                    civic_user_id=civic_user_id,
+                    auth_method=auth_method,
+                    wallet_address=wallet_address,
+                    civic_metadata=civic_data
+                )
+            else:
+                # Update existing user
+                user.civic_user_id = civic_user_id
+                user.auth_method = auth_method
+                user.wallet_address = wallet_address
+                user.civic_metadata = civic_data
+                user.save()
+            
+            return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to sync Civic user: {str(e)}'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    @action(detail=False, methods=['post'])
+    def civic_logout(self, request):
+        """Handle Civic Auth logout"""
+        try:
+            user = request.user
+            if user.auth_method.startswith('civic'):
+                # Clear Civic-specific data
+                user.civic_metadata = {}
+                user.save()
+            
+            return Response({'message': 'Civic logout successful'})
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to logout Civic user: {str(e)}'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+

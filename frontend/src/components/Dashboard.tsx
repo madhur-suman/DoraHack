@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import api from "../utils/api.js"
 import { 
@@ -14,13 +15,16 @@ import {
   ArrowRight,
   TrendingUp,
   Star,
-  Coins
+  Coins,
+  Shield,
+  Wallet
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { user, logout, isCivicUser } = useAuth();
   
   // --- Start of API Integration ---
 
@@ -75,6 +79,11 @@ const Dashboard = () => {
 
   // --- End of API Integration ---
 
+  // Handle logout
+  const handleLogout = async () => {
+    await logout();
+    navigate('/auth');
+  };
 
   // The rest of your UI data remains unchanged
   const featureCards = [
@@ -127,11 +136,29 @@ const Dashboard = () => {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gradient">ShopSense</h1>
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10">
-              <User className="w-4 h-4 mr-2" />
-              Me
-            </Button>
-            <Button variant="default" size="sm" className="bg-primary hover:bg-primary/90">
+            {/* User Info */}
+            <div className="flex items-center gap-2">
+              {isCivicUser && (
+                <div className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
+                  <Shield className="w-3 h-3" />
+                  Civic
+                </div>
+              )}
+              <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10">
+                <User className="w-4 h-4 mr-2" />
+                {user?.name || user?.username || 'Me'}
+                {isCivicUser && user?.walletAddress && (
+                  <Wallet className="w-3 h-3 ml-1" />
+                )}
+              </Button>
+            </div>
+            
+            <Button 
+              variant="default" 
+              size="sm" 
+              className="bg-primary hover:bg-primary/90"
+              onClick={handleLogout}
+            >
               <LogOut className="w-4 h-4 mr-2" />
               Logout
             </Button>
@@ -146,6 +173,12 @@ const Dashboard = () => {
           <p className="text-muted-foreground text-lg">
             Streamline your receipt processing with AI-powered insights
           </p>
+          {isCivicUser && (
+            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-full">
+              <Shield className="w-4 h-4" />
+              <span className="text-sm font-medium">Secured with Civic Auth</span>
+            </div>
+          )}
         </div>
 
         {/* Summary Cards */}
